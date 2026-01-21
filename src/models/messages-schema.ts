@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
+  conversationId: { type: String },
+  contactId: { type: mongoose.Schema.Types.ObjectId, ref: "contacts" },
   messageId: { type: String, unique: true },
   from: { type: String, required: true },
   to: { type: String, required: true },

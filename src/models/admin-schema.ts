@@ -9,6 +9,7 @@ export interface IAdmin extends Document {
   country?: "NL" | "BE" | "FR" | "UK" | "ES";
   language?: "en" | "nl" | "fr" | "es";
   authType: "EMAIL" | "GOOGLE" | "APPLE";
+  primaryChannel?: string[]
   isBlocked?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -51,6 +52,11 @@ const adminSchema = new Schema<IAdmin>(
       type: String,
     //   enum: languages,
       default: "en",
+    },
+    primaryChannel: {
+        type: [String],
+        enum: ["EMAIL", "SMS", "WHATSAPP"],
+        default: "EMAIL"
     },
   },
   { timestamps: true }

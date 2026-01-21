@@ -7,13 +7,13 @@ import { decode } from 'next-auth/jwt'
 configDotenv()
 
 
-declare global {
-    namespace Express {
-        interface Request {
-            user?: string | JwtPayload
-        }
-    }
-}
+// declare global {
+//     namespace Express {
+//         interface Request {
+//             user?: string | JwtPayload
+//         }
+//     }
+// }
 
 export const checkPublisherAuth = async (req: Request, res: Response, next: NextFunction) => {
     try {

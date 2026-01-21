@@ -513,7 +513,7 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
           );
 
           // Mark as read
-          await markAsRead(message.id);
+          // await markAsRead(message.id);
         }
       }
 

@@ -27,7 +27,7 @@ const hubspotContactSchema = new Schema<IHubSpotContact>(
         required: true,
         unique: true,
         default: () => customAlphabet("0123456789", 5)()
-      },
+    },
     email: {
       type: String,
       required: true,

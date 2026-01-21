@@ -7,7 +7,8 @@ const contactSchema = new mongoose.Schema({
   },
   phoneNumber: { type: String, required: true, unique: true },
   name: String,
-  lastMessageAt: Date,
+  lastMessageReceivedAt: Date,
+  lastMessageSentAt: Date,
   unreadCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
