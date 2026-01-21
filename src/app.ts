@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 import connectDB from "./config/db"
 // import admin from "firebase-admin"
 import bodyParser from 'body-parser'
-import { whatsappRoutes } from "./routes"
+import { authRoutes, hubspotRoutes, whatsappRoutes } from "./routes"
 
 // Create __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url) // <-- Define __filename
@@ -54,6 +54,8 @@ app.get("/", (_, res: any) => {
 });
 
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/hubspot', hubspotRoutes);
+app.use('/api/auth', authRoutes);
 
 // initializeFirebase()
 app.listen(PORT, () => console.log(`Server is listening on port ${PORT}`));
