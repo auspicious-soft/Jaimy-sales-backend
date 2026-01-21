@@ -1,39 +1,30 @@
-import { Router } from "express";
-
+import { Router } from 'express';
 import {
-    sendMessage,
-    verifyWebhook,
-    handleWebhook,
-    getMessages,
-    getContacts,
-} from "../controllers/whatsapp-controller";
+  sendMessage,
+  sendTemplate,
+  sendMedia,
+  verifyWebhook,
+  handleWebhook,
+  getMessages,
+  getContacts,
+  markContactAsRead,
+} from '../controllers/whatsapp-controller';
 
 const router = Router();
 
-/**
- * Send WhatsApp message
- */
-router.post("/send", sendMessage);
+// Webhook routes
+router.get('/webhook', verifyWebhook);
+router.post('/webhook', handleWebhook);
 
-/**
- * Webhook verification (Meta)
- */
-router.get("/webhook", verifyWebhook);
+// Message routes
+router.post('/send-message', sendMessage);
+router.post('/send-template', sendTemplate);
+router.post('/send-media', sendMedia);
+router.get('/messages', getMessages);
 
-/**
- * Webhook events (incoming messages, statuses)
- */
-router.post("/webhook", handleWebhook);
+// Contact routes
+router.get('/contacts', getContacts);
+router.patch('/contacts/:phoneNumber/read', markContactAsRead);
 
-/**
- * Get messages
- * ?phoneNumber=919xxxxxxxxx&limit=50
- */
-router.get("/messages", getMessages);
-
-/**
- * Get contacts
- */
-router.get("/contacts", getContacts);
 
 export { router };

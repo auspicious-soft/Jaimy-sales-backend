@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const contactSchema = new mongoose.Schema({
+  hubspotId:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "hubspotContacts"
+  },
   phoneNumber: { type: String, required: true, unique: true },
   name: String,
   lastMessageAt: Date,
