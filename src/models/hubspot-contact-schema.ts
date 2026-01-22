@@ -1,3 +1,4 @@
+import { time } from 'console';
 import mongoose, { Document, Schema } from 'mongoose';
 import { customAlphabet } from "nanoid";
 
@@ -15,6 +16,7 @@ export interface IHubSpotContact extends Document {
   whatsappMessageId?: string;
   whatsappStatus?: 'pending' | 'sent' | 'delivered' | 'failed';
   metadata?: any;
+  retryCount: number;
   createdAt: Date;
   country?: string;
   updatedAt: Date;
@@ -79,9 +81,13 @@ const hubspotContactSchema = new Schema<IHubSpotContact>(
       enum: ['pending', 'sent', 'delivered', 'failed'],
       default: 'pending',
     },
-    metadata: {
-      type: Schema.Types.Mixed,
-    },
+    metadata: [{
+      type: Object,
+    }],
+    retryCount: {
+      type: Number,
+      default: 3
+    }
   },
   {
     timestamps: true,

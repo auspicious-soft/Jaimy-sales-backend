@@ -3,6 +3,7 @@ import { configDotenv } from "dotenv";
 import ForgotPasswordEmail from "./templates/forget-password";
 import LoginCredentials from "./templates/login-credentials";
 import VerifyEmail from "./templates/email-verification";
+import WhatsAppFailureNotification from "./templates/WhatsAppFailureNotification";
 
 configDotenv()
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -16,6 +17,27 @@ export const sendPasswordResetEmail = async (email: string, token: string, langu
          subject: "Reset your password",
          react: ForgotPasswordEmail({ otp: token , language }),
       });
+
+      if (!result || result.error) {
+         console.error("Failed to send password reset email:", result?.error);
+         throw new Error("Failed to send password reset email");
+      }
+
+      return result;
+   } catch (error) {
+      console.error("Error sending password reset email:", error);
+      throw error; // Re-throw to be handled by the caller
+   }
+}
+export const WhatsAppFailureNotificationEmail = async (email: string, phoneNumber: string,name?:any ) => {
+   try {
+      const result = await resend.emails.send({
+          from: process.env.COMPANY_RESEND_GMAIL_ACCOUNT as string,
+          to: email,
+          subject: "Reset your password",
+          react: WhatsAppFailureNotification({ name, phoneNumber }),
+        });
+        console.log('result: ', result);
 
       if (!result || result.error) {
          console.error("Failed to send password reset email:", result?.error);

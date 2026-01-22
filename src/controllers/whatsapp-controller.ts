@@ -279,7 +279,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     await contactsModel.findOneAndUpdate(
       { phoneNumber: formattedPhone },
       { 
-        lastMessageAt: new Date(),
+        lastMessageSentAt: new Date(),
         phoneNumber: formattedPhone,
       },
       { upsert: true, new: true }
@@ -350,7 +350,7 @@ export async function sendTemplate(req: Request, res: Response): Promise<void> {
 
     await contactsModel.findOneAndUpdate(
       { phoneNumber: formattedPhone },
-      { lastMessageAt: new Date(), phoneNumber: formattedPhone },
+      { lastMessageSentAt: new Date(),lastMessageAt: new Date(), phoneNumber: formattedPhone },
       { upsert: true, new: true }
     );
 
@@ -413,7 +413,7 @@ export async function sendMedia(req: Request, res: Response): Promise<void> {
 
     await contactsModel.findOneAndUpdate(
       { phoneNumber: formattedPhone },
-      { lastMessageAt: new Date(), phoneNumber: formattedPhone },
+      { lastMessageSentAt: new Date(),lastMessageAt: new Date(), phoneNumber: formattedPhone },
       { upsert: true, new: true }
     );
 
@@ -506,6 +506,7 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
             { phoneNumber: message.from },
             {
               phoneNumber: message.from,
+              lastMessageReceivedAt: new Date(),
               lastMessageAt: new Date(),
               $inc: { unreadCount: 1 },
             },

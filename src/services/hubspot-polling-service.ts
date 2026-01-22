@@ -3,6 +3,8 @@ import { contactsModel } from "../models/contacts-schema";
 import { formatPhoneNumber, isValidPhoneNumber, sendTemplateMessage } from "./whatsapp-service";
 import { config } from "src/config/whatsapp";
 import { hubspotContactModel } from "src/models/hubspot-contact-schema";
+import { sendPasswordResetEmail, WhatsAppFailureNotificationEmail } from "src/utils/mails/mail";
+import { convertToUTC } from "src/utils";
 
 const HUBSPOT_API_KEY = config.hubspot.apiKey;
 const HUBSPOT_API_URL = "https://api.hubapi.com";
@@ -35,7 +37,6 @@ export async function pollFormSubmissions(formGuid: string): Promise<void> {
 
 		const submissions: HubSpotFormSubmission[] = response.data.results || [];
 
-		console.log(`📊 Found ${submissions.length} new submissions`);
 
 		for (const submission of submissions) {
 			await processFormSubmission(submission, formGuid);
@@ -48,100 +49,237 @@ export async function pollFormSubmissions(formGuid: string): Promise<void> {
 	}
 }
 
-async function processFormSubmission(submission: HubSpotFormSubmission, formGuid: string): Promise<void> {
-	try {
-		const email = findValue(submission.values, "email");
-		const firstName = findValue(submission.values, "firstname");
-		const lastName = findValue(submission.values, "lastname");
-		const phone = findValue(submission.values, "phone");
-		const company = findValue(submission.values, "company");
+// async function processFormSubmission(submission: HubSpotFormSubmission, formGuid: string): Promise<void> {
+// 	try {
+// 		const email = findValue(submission.values, "email");
+// 		const firstName = findValue(submission.values, "firstname");
+// 		const lastName = findValue(submission.values, "lastname");
+// 		const phone = findValue(submission.values, "phone");
+// 		const company = findValue(submission.values, "company");
 
-		if (!email || !phone) {
-			console.log("⚠️ Skipping submission - missing email or phone");
-			return;
-		}
+// 		if (!email || !phone) {
+// 			console.log("⚠️ Skipping submission - missing email or phone");
+// 			return;
+// 		}
 
-		const formattedPhone = formatPhoneNumber(phone);
+// 		const formattedPhone = formatPhoneNumber(phone);
 
-		if (!isValidPhoneNumber(formattedPhone)) {
-			console.log("⚠️ Invalid phone number:", phone);
-			return;
-		}
+// 		if (!isValidPhoneNumber(formattedPhone)) {
+// 			console.log("⚠️ Invalid phone number:", phone);
+// 			return;
+// 		}
 
-		const existing = await hubspotContactModel.findOne({
-			email,
-			phone: formattedPhone,
-			"metadata.submittedAt": submission.submittedAt,
-		});
+// 		const existing = await hubspotContactModel.findOne({
+// 			email,
+// 			phone: formattedPhone,
+// 			"metadata.submittedAt": submission.submittedAt,
 
-		if (existing) {
-			console.log("⏭️ Already processed:", email);
-			return;
-		}
+// 		});
 
-		const contact = await hubspotContactModel.create({
-			email,
-			firstName,
-			lastName,
-			phone: formattedPhone,
-			company,
-			formId: formGuid,
-			source: "hubspot",
-			whatsappStatus: "pending",
-			metadata: {
-				submittedAt: submission.submittedAt,
-				pageUrl: submission.pageUrl,
+// 		if (existing && existing.whatsappStatus === "sent") {
+// 			console.log("⏭️ Already processed:", email);
+// 			return;
+// 		}
+
+// 		const contact = await hubspotContactModel.create({
+// 			email,
+// 			firstName,
+// 			lastName,
+// 			phone: formattedPhone,
+// 			company,
+// 			formId: formGuid,
+// 			source: "hubspot",
+// 			whatsappStatus: "pending",
+// 			metadata: {
+// 				submittedAt: submission.submittedAt,
+// 				pageUrl: submission.pageUrl,
+// 			},
+// 		});
+// 		const fullName = `${firstName} ${lastName}`.trim();
+// 		console.log("✅ Contact created:", contact._id);
+
+// 		await contactsModel.findOneAndUpdate(
+// 			{ phoneNumber: formattedPhone },
+// 			{
+// 				phoneNumber: formattedPhone,
+// 				name: `${firstName || ""} ${lastName || ""}`.trim(),
+// 				lastMessageSentAt: new Date(),
+// 				lastMessageAt: new Date(),
+// 			},
+// 			{ upsert: true, new: true },
+// 		);
+
+// 		const result = await sendTemplateMessage(formattedPhone, "welcome_template ", "en"
+// 			, [
+// 			{
+// 				type: "body",
+// 				parameters: [{ type: "text", text: fullName }],
+// 			},
+// 		]
+// 	);
+
+// 		if (result.success) {
+// 			await hubspotContactModel.findByIdAndUpdate(contact._id, {
+// 				whatsappTemplateSent: true,
+// 				whatsappMessageId: result.messageId,
+// 				whatsappStatus: "sent",
+// 			});
+// 			console.log("✅ WhatsApp sent to:", email);
+// 		} else {
+// 			await hubspotContactModel.findByIdAndUpdate(contact._id, {
+// 				whatsappStatus: "failed",
+// 			});
+// 			console.error("❌ WhatsApp failed for:", email);
+// 		}
+// 	} catch (error: any) {
+// 		console.error("❌ Process submission error:", error.message);
+// 	}
+// }
+
+
+
+async function processFormSubmission(
+  submission: HubSpotFormSubmission,
+  formGuid: string
+): Promise<void> {
+  try {
+    const email = findValue(submission.values, "email");
+    const firstName = findValue(submission.values, "firstname");
+    const lastName = findValue(submission.values, "lastname");
+    const phoneRaw = findValue(submission.values, "phone");
+    const company = findValue(submission.values, "company");
+
+    if (!email || !phoneRaw) {
+      // console.log("⚠️ Missing email or phone, skipping");
+      return;
+    }
+
+    const formattedPhone = formatPhoneNumber(phoneRaw);
+    if (!isValidPhoneNumber(formattedPhone)) {
+      // console.log("⚠️ Invalid phone:", phoneRaw);
+      return;
+    }
+
+    const fullName = `${firstName || ""} ${lastName || ""}`.trim();
+    const submittedAt = convertToUTC(submission.submittedAt);
+
+    /* ------------------ UPSERT (NO DUPLICATE KEY POSSIBLE) ------------------ */
+    const contact = await hubspotContactModel.findOneAndUpdate(
+		{ phone: formattedPhone },
+		{
+			$setOnInsert: {
+				email,
+				firstName,
+				lastName,
+				phone: formattedPhone,
+				company,
+				formId: formGuid,
+				source: "hubspot",
+				whatsappStatus: "pending",
+				retryCount: 2,
+				metadata: {
+					submittedAt,
+					pageUrl: submission.pageUrl,
+				},
 			},
-		});
-		const fullName = `${firstName} ${lastName}`.trim();
-		console.log("✅ Contact created:", contact._id);
+		},
+		{ upsert: true, new: true }
+    );
 
-		await contactsModel.findOneAndUpdate(
-			{ phoneNumber: formattedPhone },
-			{
-				phoneNumber: formattedPhone,
-				name: `${firstName || ""} ${lastName || ""}`.trim(),
-				lastMessageAt: new Date(),
-			},
-			{ upsert: true, new: true },
-		);
+    /* ---------------------------- ALREADY SENT ----------------------------- */
+    if (contact.whatsappStatus === "sent") {
+      // console.log("⏭️ WhatsApp already sent:", email);
+      return;
+    }
 
-		const result = await sendTemplateMessage(formattedPhone, "hello_world", "en_US"
-		// 	, [
-		// 	{
-		// 		type: "body",
-		// 		parameters: [{ type: "text", text: fullName }],
-		// 	},
-		// ]
-	);
+    /* ------------------------ RETRY EXHAUSTED → EMAIL ----------------------- */
+    if (contact.whatsappStatus === "failed" && contact.retryCount <= 0) {
+		const hasFailureEmailAlreadySent =
+    Array.isArray(contact.metadata) &&
+    contact.metadata.some(
+      (m: any) => m.WhatsAppFailedEmailSent === true
+    );
 
-		if (result.success) {
-			await hubspotContactModel.findByIdAndUpdate(contact._id, {
-				whatsappTemplateSent: true,
-				whatsappMessageId: result.messageId,
-				whatsappStatus: "sent",
-			});
-			console.log("✅ WhatsApp sent to:", email);
-		} else {
-			await hubspotContactModel.findByIdAndUpdate(contact._id, {
-				whatsappStatus: "failed",
-			});
-			console.error("❌ WhatsApp failed for:", email);
-		}
-	} catch (error: any) {
-		console.error("❌ Process submission error:", error.message);
-	}
+  if (hasFailureEmailAlreadySent) {
+    // console.log("⏭️ Failure email already sent, skipping:", email);
+    return;
+  }
+      await WhatsAppFailureNotificationEmail(email, formattedPhone, fullName);
+
+    await hubspotContactModel.findByIdAndUpdate(contact._id, {
+    $push: {
+      metadata: {
+        WhatsAppFailedEmailAt: new Date(),
+        WhatsAppFailedEmailSent: true,
+      },
+    },
+    });
+
+      // console.log("📧 Failure email sent:", email);
+      return;
+    }
+
+    /* --------------------------- SYNC CONTACTS ----------------------------- */
+    await contactsModel.findOneAndUpdate(
+      { phoneNumber: formattedPhone },
+      {
+        phoneNumber: formattedPhone,
+        name: fullName,
+        lastMessageSentAt: new Date(),
+        lastMessageAt: new Date(),
+      },
+      { upsert: true }
+    );
+
+    /* --------------------------- SEND WHATSAPP ------------------------------ */
+    const result = await sendTemplateMessage(
+      formattedPhone,
+      "welcome_template",
+      "en",
+      [
+        {
+          type: "body",
+          parameters: [{ type: "text", text: fullName }],
+        },
+      ]
+    );
+
+    if (result.success) {
+      await hubspotContactModel.findByIdAndUpdate(contact._id, {
+        whatsappTemplateSent: true,
+        whatsappMessageId: result.messageId,
+        whatsappStatus: "sent",
+      });
+
+      // console.log("✅ WhatsApp sent:", email);
+    } else {
+      await hubspotContactModel.findByIdAndUpdate(contact._id, {
+        whatsappStatus: "failed",
+        $inc: { retryCount: -1 },
+      });
+
+      console.error("❌ WhatsApp failed:", email);
+    }
+  } catch (error: any) {
+    console.error("❌ Process submission error:", error.message);
+  }
 }
+
+
+
 
 export function startPollingService(formGuids: string[]): void {
 	console.log("🚀 Starting HubSpot polling service...");
 	console.log("📋 Monitoring forms:", formGuids);
 
-	setInterval(async () => {
-		for (const formGuid of formGuids) {
-			await pollFormSubmissions(formGuid);
-		}
-	}, 1 * 60 * 1000); // 30 seconds - 2 min 2 * 60 * 1000
+	setInterval(
+		async () => {
+			for (const formGuid of formGuids) {
+				await pollFormSubmissions(formGuid);
+			}
+		},
+		1 * 60 * 1000,
+	); // 30 seconds - 2 min 2 * 60 * 1000
 
 	setTimeout(async () => {
 		for (const formGuid of formGuids) {

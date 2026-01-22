@@ -142,7 +142,7 @@ export function formatPhoneNumber(phone: string): string {
   // If number doesn't have country code and starts with 0, remove leading 0
   // Example: 09729360795 -> 9729360795 (assuming India, add 91)
   if (cleaned.startsWith('0') && cleaned.length === 11) {
-    return '91' + cleaned.substring(1);
+    return '+91' + cleaned.substring(1);
   }
   
   return cleaned;

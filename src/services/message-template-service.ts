@@ -15,7 +15,7 @@ export const createMessageTemplateService = async (payload: any, res: Response) 
 
     const newTemplate = new messageTemplateModel({
       title,
-      templateType: templateType || "Remainder",
+      templateType: templateType || "Reminder",
       usedFor: usedFor || "Email",
       content,
       remainderHours: remainderHours || 0,

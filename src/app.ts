@@ -85,5 +85,4 @@ app.listen(config.server.port, () => {
 		console.log("💡 Add HUBSPOT_FORM_GUIDS to .env to enable auto-polling");
 	}
 
-	// Start reminder cron job
 });
