@@ -10,6 +10,7 @@ const contactSchema = new mongoose.Schema({
   lastMessageReceivedAt: Date,
   lastMessageAt: Date,
   lastMessageSentAt: Date,
+  status: { type: String, enum: ["active", "inactive", "blocked"], default: "inactive" },
   unreadCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });

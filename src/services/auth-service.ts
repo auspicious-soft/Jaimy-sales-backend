@@ -70,10 +70,10 @@ export const forgotPasswordService = async (email: string, res: Response) => {
   }
 };
 
-export const newPassswordAfterOTPVerifiedService = async (payload: { password: string; otp: string }, res: Response) => {
-  const { password, otp } = payload;
+export const newPassswordAfterOTPVerifiedService = async (payload: { password: string; token: string }, res: Response) => {
+  const { password, token } = payload;
 
-  const existingToken = await getPasswordResetTokenByToken(otp);
+  const existingToken = await getPasswordResetTokenByToken(token);
   if (!existingToken) return errorResponseHandler("Invalid OTP", httpStatusCode.BAD_REQUEST, res);
 
   const hasExpired = new Date(existingToken.expires) < new Date();
@@ -138,5 +138,5 @@ export const verifyOtpPasswordResetService = async (token: string, res: Response
     
 	const hasExpired = new Date(existingToken.expires) < new Date();
 	if (hasExpired) return errorResponseHandler("OTP expired", httpStatusCode.BAD_REQUEST, res);
-	return { success: true, message: "OTP verified successfully" };
+	return { success: true, message: "OTP verified successfully",token };
 };

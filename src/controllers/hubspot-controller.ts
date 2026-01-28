@@ -55,17 +55,35 @@ export async function getContactStats(req: Request, res: Response): Promise<void
   }
 }
 
-export async function getHubSpotContacts(req: Request, res: Response): Promise<void> {
+export async function getHubSpotContacts(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
-    const { limit = '50', page = '1', whatsappStatus } = req.query;
+    const {
+      limit = "50",
+      page = "1",
+      whatsappStatus,
+      search,
+    } = req.query;
 
     const limitNum = parseInt(limit as string);
     const pageNum = parseInt(page as string);
     const skip = (pageNum - 1) * limitNum;
 
     const query: any = {};
+
     if (whatsappStatus) {
       query.whatsappStatus = whatsappStatus;
+    }
+
+    if (search) {
+      const regex = new RegExp(search as string, "i");
+      query.$or = [
+        { email: regex },
+        { firstName: regex },
+        { lastName: regex },
+      ];
     }
 
     const [contacts, total] = await Promise.all([

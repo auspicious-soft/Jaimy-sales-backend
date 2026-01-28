@@ -220,6 +220,7 @@ import {
 import { contactsModel } from '../models/contacts-schema';
 import { messagesModel } from '../models/messages-schema';
 import { config } from 'src/config/whatsapp';
+import { sendSms } from 'src/utils/sendSms';
 
 /**
  * Send a message

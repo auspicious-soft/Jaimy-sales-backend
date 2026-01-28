@@ -5,6 +5,7 @@ import { config } from "src/config/whatsapp";
 import { hubspotContactModel } from "src/models/hubspot-contact-schema";
 import { sendPasswordResetEmail, WhatsAppFailureNotificationEmail } from "src/utils/mails/mail";
 import { convertToUTC } from "src/utils";
+import { sendSms } from "src/utils/sendSms";
 
 const HUBSPOT_API_KEY = config.hubspot.apiKey;
 const HUBSPOT_API_URL = "https://api.hubapi.com";
@@ -49,94 +50,6 @@ export async function pollFormSubmissions(formGuid: string): Promise<void> {
 	}
 }
 
-// async function processFormSubmission(submission: HubSpotFormSubmission, formGuid: string): Promise<void> {
-// 	try {
-// 		const email = findValue(submission.values, "email");
-// 		const firstName = findValue(submission.values, "firstname");
-// 		const lastName = findValue(submission.values, "lastname");
-// 		const phone = findValue(submission.values, "phone");
-// 		const company = findValue(submission.values, "company");
-
-// 		if (!email || !phone) {
-// 			console.log("⚠️ Skipping submission - missing email or phone");
-// 			return;
-// 		}
-
-// 		const formattedPhone = formatPhoneNumber(phone);
-
-// 		if (!isValidPhoneNumber(formattedPhone)) {
-// 			console.log("⚠️ Invalid phone number:", phone);
-// 			return;
-// 		}
-
-// 		const existing = await hubspotContactModel.findOne({
-// 			email,
-// 			phone: formattedPhone,
-// 			"metadata.submittedAt": submission.submittedAt,
-
-// 		});
-
-// 		if (existing && existing.whatsappStatus === "sent") {
-// 			console.log("⏭️ Already processed:", email);
-// 			return;
-// 		}
-
-// 		const contact = await hubspotContactModel.create({
-// 			email,
-// 			firstName,
-// 			lastName,
-// 			phone: formattedPhone,
-// 			company,
-// 			formId: formGuid,
-// 			source: "hubspot",
-// 			whatsappStatus: "pending",
-// 			metadata: {
-// 				submittedAt: submission.submittedAt,
-// 				pageUrl: submission.pageUrl,
-// 			},
-// 		});
-// 		const fullName = `${firstName} ${lastName}`.trim();
-// 		console.log("✅ Contact created:", contact._id);
-
-// 		await contactsModel.findOneAndUpdate(
-// 			{ phoneNumber: formattedPhone },
-// 			{
-// 				phoneNumber: formattedPhone,
-// 				name: `${firstName || ""} ${lastName || ""}`.trim(),
-// 				lastMessageSentAt: new Date(),
-// 				lastMessageAt: new Date(),
-// 			},
-// 			{ upsert: true, new: true },
-// 		);
-
-// 		const result = await sendTemplateMessage(formattedPhone, "welcome_template ", "en"
-// 			, [
-// 			{
-// 				type: "body",
-// 				parameters: [{ type: "text", text: fullName }],
-// 			},
-// 		]
-// 	);
-
-// 		if (result.success) {
-// 			await hubspotContactModel.findByIdAndUpdate(contact._id, {
-// 				whatsappTemplateSent: true,
-// 				whatsappMessageId: result.messageId,
-// 				whatsappStatus: "sent",
-// 			});
-// 			console.log("✅ WhatsApp sent to:", email);
-// 		} else {
-// 			await hubspotContactModel.findByIdAndUpdate(contact._id, {
-// 				whatsappStatus: "failed",
-// 			});
-// 			console.error("❌ WhatsApp failed for:", email);
-// 		}
-// 	} catch (error: any) {
-// 		console.error("❌ Process submission error:", error.message);
-// 	}
-// }
-
-
 
 async function processFormSubmission(
   submission: HubSpotFormSubmission,
@@ -150,7 +63,7 @@ async function processFormSubmission(
     const company = findValue(submission.values, "company");
 
     if (!email || !phoneRaw) {
-      // console.log("⚠️ Missing email or phone, skipping");
+      console.log("⚠️ Missing email or phone, skipping");
       return;
     }
 
@@ -188,7 +101,7 @@ async function processFormSubmission(
 
     /* ---------------------------- ALREADY SENT ----------------------------- */
     if (contact.whatsappStatus === "sent") {
-      // console.log("⏭️ WhatsApp already sent:", email);
+      console.log("⏭️ WhatsApp already sent:", email);
       return;
     }
 
@@ -201,10 +114,11 @@ async function processFormSubmission(
     );
 
   if (hasFailureEmailAlreadySent) {
-    // console.log("⏭️ Failure email already sent, skipping:", email);
+    console.log("⏭️ Failure email already sent, skipping:", email);
+    // await sendSms("+919729360795", "Disstrikt", "+919729360795");
     return;
   }
-      await WhatsAppFailureNotificationEmail(email, formattedPhone, fullName);
+    await WhatsAppFailureNotificationEmail(email, formattedPhone, fullName);
 
     await hubspotContactModel.findByIdAndUpdate(contact._id, {
     $push: {

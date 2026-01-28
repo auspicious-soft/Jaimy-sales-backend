@@ -13,7 +13,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
     };
 
     const data = await getDashboardData(filters);
-    return res.status(200).json(data);
+    return res.status(200).json(data); 
   } catch (error) {
     console.error("Dashboard error:", error);
     return res.status(500).json({ message: "Failed to load dashboard data" });
