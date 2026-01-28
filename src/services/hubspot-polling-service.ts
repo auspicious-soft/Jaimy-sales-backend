@@ -101,7 +101,7 @@ async function processFormSubmission(
 
     /* ---------------------------- ALREADY SENT ----------------------------- */
     if (contact.whatsappStatus === "sent") {
-      console.log("⏭️ WhatsApp already sent:", email);
+      // console.log("⏭️ WhatsApp already sent:", email);
       return;
     }
 
@@ -114,7 +114,7 @@ async function processFormSubmission(
     );
 
   if (hasFailureEmailAlreadySent) {
-    console.log("⏭️ Failure email already sent, skipping:", email);
+    // console.log("⏭️ Failure email already sent, skipping:", email);
     // await sendSms("+919729360795", "Disstrikt", "+919729360795");
     return;
   }

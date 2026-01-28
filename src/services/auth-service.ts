@@ -36,7 +36,6 @@ export const loginService = async (payload: any, res: Response) => {
 };
 
 export const forgotPasswordService = async (email: string, res: Response) => {
-    console.log('email: ', email);
   const admin = await AdminModel.findOne({ email: email }).select("+password");
   if (!admin) return errorResponseHandler("Email not found", httpStatusCode.NOT_FOUND, res);
 
@@ -102,6 +101,14 @@ export const getAdminDetailsService = async (payload: any, res: Response) => {
   const results = await AdminModel.find();
   return {
     success: true,
+    data: results,
+  };
+};
+export const updateAdminDetailsService = async (payload: any, res: Response) => {
+  const results = await AdminModel.findByIdAndUpdate(payload._id, payload, { new: true }).lean();
+  return {
+    success: true,
+    message: "Admin details updated successfully",
     data: results,
   };
 };

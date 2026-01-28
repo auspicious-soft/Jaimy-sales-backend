@@ -1,6 +1,8 @@
 
 import express from "express";
 import cors from "cors";
+import http from 'http';
+
 // import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -12,6 +14,7 @@ import { startPollingService } from "./services/hubspot-polling-service";
 import { startReminderCronJob } from "./services/reminder-cron-service";
 import mongoose from "mongoose";
 import { config } from "./config/whatsapp";
+import { initSocket } from "./lib/socket";
 
 // Create __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url); // <-- Define __filename
@@ -47,7 +50,13 @@ app.use(
 
 var dir = path.join(__dirname, "static");
 app.use(express.static(dir));
+// const server = http.createServer(app);
 
+// initSocket(server);
+
+// server.listen(8001, () => {
+//   console.log('Server running');
+// });
 var uploadsDir = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(uploadsDir));
 
@@ -66,15 +75,18 @@ app.use("/api/auth", authRoutes);
 connectDB();
 
 startReminderCronJob();
-// Start server
-app.listen(config.server.port, () => {
+
+const server = http.createServer(app);
+
+initSocket(server); // attach socket here
+
+server.listen(config.server.port, () => {
 	console.log(`🚀 Server running on port ${config.server.port}`);
 	console.log(`📱 WhatsApp API URL: ${config.whatsapp.apiUrl}`);
 	console.log(`📞 Phone Number ID: ${config.whatsapp.phoneNumberId}`);
 	console.log(`🔗 Webhook URL: ${config.webhook.url}`);
 	console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
 
-	// Start HubSpot polling service
 	const formGuids = config.hubspot.formGuids;
 
 	if (formGuids.length > 0) {
@@ -84,5 +96,4 @@ app.listen(config.server.port, () => {
 		console.log("⚠️ No HubSpot forms configured.");
 		console.log("💡 Add HUBSPOT_FORM_GUIDS to .env to enable auto-polling");
 	}
-
 });
