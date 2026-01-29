@@ -836,9 +836,10 @@ export async function getContacts(req: Request, res: Response): Promise<void> {
       ];
     }
 
-    const contacts = await contactsModel
-      .find(query)
-      .sort({ lastMessageAt: -1 });
+	const contacts = await contactsModel
+	  .find(query)
+	  .sort({ lastMessageAt: -1 })
+	  .populate("hubspotId");
 
     res.json({
       success: true,

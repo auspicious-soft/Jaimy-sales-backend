@@ -6,6 +6,7 @@ import { hubspotContactModel } from "src/models/hubspot-contact-schema";
 import { sendPasswordResetEmail, WhatsAppFailureNotificationEmail } from "src/utils/mails/mail";
 import { convertToUTC } from "src/utils";
 import { sendSms } from "src/utils/sendSms";
+import { messagesModel } from "src/models/messages-schema";
 
 const HUBSPOT_API_KEY = config.hubspot.apiKey;
 const HUBSPOT_API_URL = "https://api.hubapi.com";
@@ -115,7 +116,7 @@ async function processFormSubmission(
 
   if (hasFailureEmailAlreadySent) {
     // console.log("⏭️ Failure email already sent, skipping:", email);
-    // await sendSms("+919729360795", "Disstrikt", "+919729360795");
+    await sendSms(phoneRaw, fullName, phoneRaw);
     return;
   }
     await WhatsAppFailureNotificationEmail(email, formattedPhone, fullName);
@@ -137,6 +138,7 @@ async function processFormSubmission(
     await contactsModel.findOneAndUpdate(
       { phoneNumber: formattedPhone },
       {
+        hubspotId: contact._id,
         phoneNumber: formattedPhone,
         name: fullName,
         lastMessageSentAt: new Date(),
@@ -163,7 +165,25 @@ async function processFormSubmission(
         whatsappTemplateSent: true,
         whatsappMessageId: result.messageId,
         whatsappStatus: "sent",
+        $push: {
+              metadata: {
+                WhatsAppWelcomeSentAt: new Date(),
+              },
+            },
       });
+      // await messagesModel.create({
+      //   contactId: contact._id,
+      //   messageId: result.messageId,
+      //   sentAt: new Date(),
+      //   from: config.whatsapp.phoneNumberId,
+      //   to: formattedPhone,
+      //   body: result.message,
+      //   direction: "outbound",
+      //   status: "sent",
+      //   metadata: {
+      //     type: "Welcome",
+      //   },
+      // })
 
       // console.log("✅ WhatsApp sent:", email);
     } else {
