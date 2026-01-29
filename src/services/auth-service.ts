@@ -1,12 +1,11 @@
 import bcrypt from "bcryptjs";
 import { Response } from "express";
 import { customAlphabet } from "nanoid";
-import { TokenError } from "passport-apple";
 import { httpStatusCode } from "src/lib/constant";
 import { errorResponseHandler } from "src/lib/errors/error-response-handler";
 import { AdminModel } from "src/models/admin-schema";
 import { passwordResetTokenModel } from "src/models/password-token-schema";
-import { sendEmailVerificationMail, sendPasswordResetEmail } from "src/utils/mails/mail";
+import {  sendPasswordResetEmail } from "src/utils/mails/mail";
 import { generatePasswordResetToken, getPasswordResetTokenByToken } from "src/utils/mails/token";
 
 export const loginService = async (payload: any, res: Response) => {

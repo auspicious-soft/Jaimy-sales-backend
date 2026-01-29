@@ -2,7 +2,6 @@
 import dayjs from "dayjs";
 import { contactsModel } from "src/models/contacts-schema";
 import { hubspotContactModel } from "src/models/hubspot-contact-schema";
-import { messagesModel } from "src/models/messages-schema";
 
 interface DashboardFilters {
   startDate?: string;

@@ -24,7 +24,6 @@ export async function pollFormSubmissions(formGuid: string): Promise<void> {
 	try {
 		console.log("🔄 Polling HubSpot form submissions for:", formGuid);
 
-		// const after = new Date(Date.now() - 5 * 60 * 1000).getTime();
 
 		const response = await axios.get(`${HUBSPOT_API_URL}/form-integrations/v1/submissions/forms/${formGuid}`, {
 			headers: {
