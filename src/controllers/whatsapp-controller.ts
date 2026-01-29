@@ -3,7 +3,6 @@ import { sendTextMessage, sendTemplateMessage, sendMediaMessage, markAsRead, for
 import { contactsModel } from "../models/contacts-schema";
 import { messagesModel } from "../models/messages-schema";
 import { config } from "src/config/whatsapp";
-import { sendSms } from "src/utils/sendSms";
 import { getIO } from "src/lib/socket";
 import { hubspotContactModel } from "src/models/hubspot-contact-schema";
 

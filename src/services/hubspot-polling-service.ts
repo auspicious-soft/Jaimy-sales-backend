@@ -3,10 +3,8 @@ import { contactsModel } from "../models/contacts-schema";
 import { formatPhoneNumber, isValidPhoneNumber, sendTemplateMessage } from "./whatsapp-service";
 import { config } from "src/config/whatsapp";
 import { hubspotContactModel } from "src/models/hubspot-contact-schema";
-import { sendPasswordResetEmail, WhatsAppFailureNotificationEmail } from "src/utils/mails/mail";
+import { WhatsAppFailureNotificationEmail } from "src/utils/mails/mail";
 import { convertToUTC } from "src/utils";
-import { sendSms } from "src/utils/sendSms";
-import { messagesModel } from "src/models/messages-schema";
 import { getCountryFromNumber } from "src/lib/constant";
 
 const HUBSPOT_API_KEY = config.hubspot.apiKey;
