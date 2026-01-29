@@ -375,7 +375,6 @@ export async function handleWebhook(req: Request, res: Response) {
 					}
 					console.log("✅ Message saved:", savedMsg._id);
 					
-					console.log('`+${message.from}`: ', `+${message.from}`);
 					// 📇 Update contact
 					const contact = await contactsModel.findOneAndUpdate(
 						{ phoneNumber: `+${message.from}` },
