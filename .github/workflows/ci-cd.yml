@@ -64,7 +64,7 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/jaimy-sales-backend:latest || { echo 'Docker pull failed'; exit 1; }
     
             echo 'Stopping existing container...'
-            docker stop jaimy-sales-backend || true 
+            docker stop jaimy-sales-backend || true  
             docker rm jaimy-sales-backend || true
     
             echo 'Running new container...'
