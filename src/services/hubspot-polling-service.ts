@@ -216,7 +216,7 @@ export function startPollingService(formGuids: string[]): void {
 				await pollFormSubmissions(formGuid);
 			}
 		},
-		1 * 60 * 1000,
+		24* 60 * 60 * 1000,
 	); // 30 seconds - 2 min 2 * 60 * 1000
 
 	setTimeout(async () => {
