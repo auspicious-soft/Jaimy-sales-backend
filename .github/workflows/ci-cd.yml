@@ -49,9 +49,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_URL << 'ENDSSH'
             set -e
 
-            # Clean up EC2 instance
             echo 'Cleaning up EC2 instance...'
-            docker image prune -f || { echo 'Docker image prune failed'; exit 1; }
+            sudo docker image prune -f || { echo 'Docker image prune failed'; exit 1; }
 
             # Check if Docker is installed
             if ! command -v docker &> /dev/null
@@ -61,12 +60,12 @@ jobs:
             fi
             
             echo 'Pulling Docker image...'
-            docker pull ${{ secrets.DOCKER_USERNAME }}/jaimy-sales-backend:latest || { echo 'Docker pull failed'; exit 1; }
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/jaimy-sales-backend:latest || { echo 'Docker pull failed'; exit 1; }
     
             echo 'Stopping existing container...'
-            docker stop jaimy-sales-backend || true  
-            docker rm jaimy-sales-backend || true
-    
+            sudo docker stop jaimy-sales-backend || true  
+            sudo docker rm jaimy-sales-backend || true
+            
             echo 'Running new container...'
             docker run -d -p 8000:8000 --name jaimy-sales-backend \
               -e MONGO_URL='${{ secrets.MONGO_URL }}' \
