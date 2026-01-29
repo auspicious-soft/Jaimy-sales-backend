@@ -462,7 +462,7 @@ const sendReminderMessages = async (): Promise<void> => {
 
 export const startReminderCronJob = (): ScheduledTask => {
   const task = cron.schedule(
-    "35 11 * * *",
+    "57 13 * * *",
     async () => {
       console.log("🌙 Reminder cron triggered");
       await sendReminderMessages();

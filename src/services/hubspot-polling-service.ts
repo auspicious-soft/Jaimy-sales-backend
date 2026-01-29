@@ -7,6 +7,7 @@ import { sendPasswordResetEmail, WhatsAppFailureNotificationEmail } from "src/ut
 import { convertToUTC } from "src/utils";
 import { sendSms } from "src/utils/sendSms";
 import { messagesModel } from "src/models/messages-schema";
+import { getCountryFromNumber } from "src/lib/constant";
 
 const HUBSPOT_API_KEY = config.hubspot.apiKey;
 const HUBSPOT_API_URL = "https://api.hubapi.com";
@@ -62,7 +63,7 @@ async function processFormSubmission(
     const lastName = findValue(submission.values, "lastname");
     const phoneRaw = findValue(submission.values, "phone");
     const company = findValue(submission.values, "company");
-
+    const region =getCountryFromNumber(phoneRaw);
     if (!email || !phoneRaw) {
       console.log("⚠️ Missing email or phone, skipping");
       return;
@@ -79,13 +80,14 @@ async function processFormSubmission(
 
     /* ------------------ UPSERT (NO DUPLICATE KEY POSSIBLE) ------------------ */
     const contact = await hubspotContactModel.findOneAndUpdate(
-		{ phone: formattedPhone },
+		{ phone: phoneRaw },
 		{
 			$setOnInsert: {
 				email,
 				firstName,
 				lastName,
-				phone: formattedPhone,
+        region,
+				phone: phoneRaw,
 				company,
 				formId: formGuid,
 				source: "hubspot",
@@ -116,7 +118,7 @@ async function processFormSubmission(
 
   if (hasFailureEmailAlreadySent) {
     // console.log("⏭️ Failure email already sent, skipping:", email);
-    await sendSms(phoneRaw, fullName, phoneRaw);
+    // await sendSms(phoneRaw, fullName, phoneRaw);
     return;
   }
     await WhatsAppFailureNotificationEmail(email, formattedPhone, fullName);
@@ -136,11 +138,13 @@ async function processFormSubmission(
 
     /* --------------------------- SYNC CONTACTS ----------------------------- */
     await contactsModel.findOneAndUpdate(
-      { phoneNumber: formattedPhone },
+      { phoneNumber: phoneRaw },
       {
+        region,
         hubspotId: contact._id,
-        phoneNumber: formattedPhone,
+        phoneNumber: phoneRaw,
         name: fullName,
+        email,
         lastMessageSentAt: new Date(),
         lastMessageAt: new Date(),
       },

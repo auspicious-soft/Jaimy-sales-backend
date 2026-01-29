@@ -248,6 +248,64 @@ export async function sendTextMessage(
     };
   }
 }
+/**
+ * fetch message templates
+ */
+export async function fetchTemplates() {
+  const response = await axios.get(
+    `${apiUrl}/${phoneNumberId}/message_templates`,
+    { headers }
+  );
+
+  return response.data.data;
+}
+
+export async function fetchTemplateByName(
+  templateName: string,
+  language: string
+) {
+  const response = await axios.get(
+    `${apiUrl}/${phoneNumberId}/message_templates`,
+    {
+      headers,
+      params: {
+        name: templateName,
+        language,
+        status: 'APPROVED',
+      },
+    }
+  );
+
+  return response.data.data?.[0] || null;
+}
+export function extractTemplateBody(template: any): string | null {
+  const body = template.components?.find(
+    (c: any) => c.type === 'BODY'
+  );
+
+  return body?.text || null;
+}
+// services/templateCache.ts
+const templateCache = new Map<string, string>();
+
+export async function syncTemplates() {
+  const templates = await fetchTemplates();
+
+  for (const template of templates) {
+    const body = extractTemplateBody(template);
+    if (!body) continue;
+
+    const key = `${template.name}:${template.language}`;
+    templateCache.set(key, body);
+  }
+}
+
+export function getCachedTemplate(
+  name: string,
+  language: string
+): string | null {
+  return templateCache.get(`${name}:${language}`) || null;
+}
 
 /**
  * Send template message

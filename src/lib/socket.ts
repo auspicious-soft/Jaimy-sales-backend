@@ -48,6 +48,7 @@ export function initSocket(server: any) {
     console.log('🟢 Client connected:', socket.id);
 
     socket.on('join', (phoneNumber) => {
+      console.log('phoneNumber-----------Join: ', phoneNumber);
       socket.join(phoneNumber);
 
       // 🔍 DEBUG: show rooms and clients count

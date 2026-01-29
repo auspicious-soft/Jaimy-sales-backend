@@ -1,209 +1,3 @@
-// import { Request, Response } from "express";
-// import {
-//   sendTextMessage,
-//   markAsRead,
-// } from "../services/whatsapp-service";
-// import { contactsModel } from "src/models/contacts-schema";
-// import { messagesModel } from "src/models/messages-schema";
-
-// /**
-//  * Send a message
-//  */
-// export async function sendMessage(req: Request, res: Response): Promise<void> {
-//   try {
-//     const { to, message } = req.body as {
-//       to?: string;
-//       message?: string;
-//     };
-
-//     if (!to || !message) {
-//       res.status(400).json({
-//         success: false,
-//         error: "Phone number and message are required",
-//       });
-//       return;
-//     }
-
-//     // Send via WhatsApp API
-//     const result = await sendTextMessage(to, message);
-
-//     if (!result.success) {
-//       res.status(500).json(result);
-//       return;
-//     }
-
-//     // Save message
-//     const newMessage = await messagesModel.create({
-//       messageId: result.messageId,
-//       from: process.env.WHATSAPP_PHONE_NUMBER_ID,
-//       to,
-//       body: message,
-//       direction: "outbound",
-//       status: "sent",
-//     });
-
-//     // Update or create contact
-//     await contactsModel.findOneAndUpdate(
-//       { phoneNumber: to },
-//       { lastMessageAt: new Date() },
-//       { upsert: true, new: true }
-//     );
-
-//     res.json({
-//       success: true,
-//       message: "Message sent successfully",
-//       data: newMessage,
-//     });
-//   } catch (error: any) {
-//     console.error("Send Message Error:", error);
-//     res.status(500).json({
-//       success: false,
-//       error: error.message,
-//     });
-//   }
-// }
-
-// /**
-//  * Webhook verification (GET)
-//  */
-// export function verifyWebhook(req: Request, res: Response): void {
-//   const mode = req.query["hub.mode"];
-//   const token = req.query["hub.verify_token"];
-//   const challenge = req.query["hub.challenge"];
-
-//   if (
-//     mode === "subscribe" &&
-//     token === process.env.WHATSAPP_VERIFY_TOKEN
-//   ) {
-//     console.log("Webhook verified");
-//     res.status(200).send(challenge);
-//   } else {
-//     res.sendStatus(403);
-//   }
-// }
-
-// /**
-//  * Webhook handler (POST)
-//  */
-// export async function handleWebhook(
-//   req: Request,
-//   res: Response
-// ): Promise<void> {
-//   try {
-//     const body = req.body;
-
-//     if (body.object !== "whatsapp_business_account") {
-//       res.sendStatus(200);
-//       return;
-//     }
-
-//     for (const entry of body.entry ?? []) {
-//       const changes = entry.changes?.[0];
-//       const value = changes?.value;
-
-//       if (!value) continue;
-
-//       // Incoming messages
-//       if (value.messages) {
-//         const message = value.messages[0];
-
-//         await messagesModel.create({
-//           messageId: message.id,
-//           from: message.from,
-//           to: value.metadata.phone_number_id,
-//           body: message.text?.body ?? "",
-//           direction: "inbound",
-//           timestamp: new Date(Number(message.timestamp) * 1000),
-//           metadata: message,
-//         });
-
-//         await contactsModel.findOneAndUpdate(
-//           { phoneNumber: message.from },
-//           {
-//             lastMessageAt: new Date(),
-//             $inc: { unreadCount: 1 },
-//           },
-//           { upsert: true, new: true }
-//         );
-
-//         await markAsRead(message.id);
-//       }
-
-//       // Status updates
-//       if (value.statuses) {
-//         const status = value.statuses[0];
-
-//         await messagesModel.findOneAndUpdate(
-//           { messageId: status.id },
-//           { status: status.status }
-//         );
-//       }
-//     }
-
-//     res.sendStatus(200);
-//   } catch (error) {
-//     console.error("Webhook Error:", error);
-//     res.sendStatus(500);
-//   }
-// }
-
-// /**
-//  * Get messages
-//  */
-// export async function getMessages(
-//   req: Request,
-//   res: Response
-// ): Promise<void> {
-//   try {
-//     const { phoneNumber, limit = "50" } = req.query as {
-//       phoneNumber?: string;
-//       limit?: string;
-//     };
-
-//     const query = phoneNumber
-//       ? { $or: [{ from: phoneNumber }, { to: phoneNumber }] }
-//       : {};
-
-//     const messages = await messagesModel.find(query)
-//       .sort({ timestamp: -1 })
-//       .limit(Number(limit));
-
-//     res.json({
-//       success: true,
-//       data: messages,
-//     });
-//   } catch (error: any) {
-//     res.status(500).json({
-//       success: false,
-//       error: error.message,
-//     });
-//   }
-// }
-
-// /**
-//  * Get contacts
-//  */
-// export async function getContacts(
-//   req: Request,
-//   res: Response
-// ): Promise<void> {
-//   try {
-//     const contacts = await contactsModel.find().sort({
-//       lastMessageAt: -1,
-//     });
-
-//     res.json({
-//       success: true,
-//       data: contacts,
-//     });
-//   } catch (error: any) {
-//     res.status(500).json({
-//       success: false,
-//       error: error.message,
-//     });
-//   }
-// }
-
 import { Request, Response } from "express";
 import { sendTextMessage, sendTemplateMessage, sendMediaMessage, markAsRead, formatPhoneNumber, isValidPhoneNumber } from "../services/whatsapp-service";
 import { contactsModel } from "../models/contacts-schema";
@@ -211,6 +5,7 @@ import { messagesModel } from "../models/messages-schema";
 import { config } from "src/config/whatsapp";
 import { sendSms } from "src/utils/sendSms";
 import { getIO } from "src/lib/socket";
+import { hubspotContactModel } from "src/models/hubspot-contact-schema";
 
 /**
  * Send a message
@@ -259,7 +54,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
 		const newMessage = await messagesModel.create({
 			messageId: result.messageId!,
 			from: config.whatsapp.phoneNumberId,
-			to: formattedPhone,
+			to: to,
 			body: message,
 			direction: "outbound",
 			status: "sent",
@@ -326,7 +121,7 @@ export async function sendTemplate(req: Request, res: Response): Promise<void> {
 		await messagesModel.create({
 			messageId: result.messageId!,
 			from: config.whatsapp.phoneNumberId,
-			to: formattedPhone,
+			to: to,
 			body: `Template: ${templateName}`,
 			direction: "outbound",
 			status: "sent",
@@ -385,7 +180,7 @@ export async function sendMedia(req: Request, res: Response): Promise<void> {
 		await messagesModel.create({
 			messageId: result.messageId!,
 			from: config.whatsapp.phoneNumberId,
-			to: formattedPhone,
+			to: to,
 			body: caption || `Media: ${mediaType}`,
 			direction: "outbound",
 			status: "sent",
@@ -435,7 +230,6 @@ export function verifyWebhook(req: Request, res: Response): void {
 /**
  * Webhook handler (POST)
  */
-
 
 // export async function handleWebhook(req: Request, res: Response) {
 //   try {
@@ -522,159 +316,135 @@ export function verifyWebhook(req: Request, res: Response): void {
 //   }
 // }
 
-
-
-
-
-
 export async function handleWebhook(req: Request, res: Response) {
-  try {
-    const body = req.body;
+	try {
+		const body = req.body;
 
-    console.log("📩 Webhook received:");
-    console.dir(body, { depth: null });
+		console.log("📩 Webhook received:");
+		console.dir(body, { depth: null });
 
-    if (body.object !== "whatsapp_business_account") {
-      console.log("⚠️ Not WhatsApp webhook, skipping");
-      return res.sendStatus(200);
-    }
+		if (body.object !== "whatsapp_business_account") {
+			console.log("⚠️ Not WhatsApp webhook, skipping");
+			return res.sendStatus(200);
+		}
 
-    for (const entry of body.entry || []) {
+		for (const entry of body.entry || []) {
+			console.log("➡ Processing entry");
 
-      console.log("➡ Processing entry");
+			const changes = entry.changes?.[0];
+			const value = changes?.value;
 
-      const changes = entry.changes?.[0];
-      const value = changes?.value;
+			if (!value) {
+				console.log("⚠️ No value found in entry");
+				continue;
+			}
 
-      if (!value) {
-        console.log("⚠️ No value found in entry");
-        continue;
-      }
+			const io = getIO();
 
-      const io = getIO();
+			// ============================
+			// 📥 INBOUND MESSAGES
+			// ============================
 
-      // ============================
-      // 📥 INBOUND MESSAGES
-      // ============================
+			if (value.messages?.length) {
+				console.log("📨 Incoming messages:", value.messages.length);
 
-      if (value.messages?.length) {
+				for (const message of value.messages) {
+					console.log("➡ Message payload:", message);
 
-        console.log("📨 Incoming messages:", value.messages.length);
+					const messageBody = message.text?.body || message.image?.caption || message.video?.caption || message.document?.caption || `[${message.type}]`;
 
-        for (const message of value.messages) {
+					console.log("📝 Parsed body:", messageBody);
 
-          console.log("➡ Message payload:", message);
+					// 💾 Save message
+					const savedMsg = await messagesModel.create({
+						messageId: message.id,
+						from: `+${message.from}`,
+						to: value.metadata.phone_number_id,
+						body: messageBody,
+						direction: "inbound",
+						timestamp: new Date(Number(message.timestamp) * 1000),
+						metadata: message,
+					});
+					const checkConversationStarted = await hubspotContactModel.findOne({ phone: `+${message.from}` });
+					console.log("checkConversationStarted: ", checkConversationStarted?.metadata);
+					const hasConversationStartedAt = checkConversationStarted?.metadata?.some((item: any) => "conversationStartedAt" in item);
+					
+					console.log(hasConversationStartedAt);
+					if (!hasConversationStartedAt) {
+						await hubspotContactModel.updateOne({ phone: `+${message.from}` }, { $push: { metadata: { conversationStartedAt: new Date() } } });
+					}
+					console.log("✅ Message saved:", savedMsg._id);
+					
+					console.log('`+${message.from}`: ', `+${message.from}`);
+					// 📇 Update contact
+					const contact = await contactsModel.findOneAndUpdate(
+						{ phoneNumber: `+${message.from}` },
+						{   
+							phoneNumber: `+${message.from}`,
+							lastMessage: messageBody,
+							lastMessageSentAt: new Date(),
+							lastMessageAt: new Date(),
+							$inc: { unreadCount: 1 },
+						},
+						{ upsert: true, new: true },
+					);
+					
+					console.log("👤 Contact updated:", contact?.phoneNumber);
+					
+					// 🔥 REALTIME EMIT
+					
+					io.to(`+${message.from}`).emit("newMessage", savedMsg);
+					console.log("📤 Emitted event: newMessage");
+					console.log("➡ Room:", `+${message.from}`);
 
-          const messageBody =
-            message.text?.body ||
-            message.image?.caption ||
-            message.video?.caption ||
-            message.document?.caption ||
-            `[${message.type}]`;
+					// 🔍 Check listeners
+					const room = io.sockets.adapter.rooms.get(`+${message.from}`);
 
-          console.log("📝 Parsed body:", messageBody);
+					console.log("👥 Active listeners:", room ? room.size : 0);
+				}
+			}
 
-          // 💾 Save message
-          const savedMsg = await messagesModel.create({
-            messageId: message.id,
-            from: message.from,
-            to: value.metadata.phone_number_id,
-            body: messageBody,
-            direction: "inbound",
-            timestamp: new Date(Number(message.timestamp) * 1000),
-            metadata: message,
-          });
+			// ============================
+			// 📊 STATUS UPDATES
+			// ============================
 
-          console.log("✅ Message saved:", savedMsg._id);
+			if (value.statuses?.length) {
+				console.log("📊 Status updates:", value.statuses.length);
 
-          // 📇 Update contact
-          const contact = await contactsModel.findOneAndUpdate(
-            { phoneNumber: message.from },
-            {
-              phoneNumber: message.from,
-              lastMessage: messageBody,
-              lastMessageSentAt: new Date(),
-              lastMessageAt: new Date(),
-              $inc: { unreadCount: 1 },
-            },
-            { upsert: true, new: true }
-          );
+				for (const status of value.statuses) {
+					console.log("➡ Status payload:", status);
 
-          console.log("👤 Contact updated:", contact?.phoneNumber);
+					const updated = await messagesModel.findOneAndUpdate({ messageId: status.id }, { status: status.status }, { new: true });
 
-          // 🔥 REALTIME EMIT
-          io.to(message.from).emit("newMessage", savedMsg);
+					if (!updated) {
+						console.log("⚠️ Message not found for status:", status.id);
+						continue;
+					}
 
-          console.log("📤 Emitted event: newMessage");
-          console.log("➡ Room:", message.from);
+					console.log("✅ Status updated:", updated.status);
 
-          // 🔍 Check listeners
-          const room = io.sockets.adapter.rooms.get(message.from);
+					io.to(`${status.recipient_id}`).emit("messageStatus", updated);
+					console.log('status.recipient_id: ', `${status.recipient_id}`);
 
-          console.log(
-            "👥 Active listeners:",
-            room ? room.size : 0
-          );
-        }
-      }
+					console.log("📤 Emitted event: messageStatus");
+					console.log("➡ Room:", `${status.recipient_id}`);
 
-      // ============================
-      // 📊 STATUS UPDATES
-      // ============================
+					const room = io.sockets.adapter.rooms.get(`${status.recipient_id}`);
 
-      if (value.statuses?.length) {
+					console.log("👥 Active listeners:", room ? room.size : 0);
+				}
+			}
+		}
 
-        console.log("📊 Status updates:", value.statuses.length);
+		console.log("✅ Webhook processed successfully\n");
 
-        for (const status of value.statuses) {
+		res.sendStatus(200);
+	} catch (err) {
+		console.error("❌ Webhook error:", err);
 
-          console.log("➡ Status payload:", status);
-
-          const updated = await messagesModel.findOneAndUpdate(
-            { messageId: status.id },
-            { status: status.status },
-            { new: true }
-          );
-
-          if (!updated) {
-            console.log("⚠️ Message not found for status:", status.id);
-            continue;
-          }
-
-          console.log("✅ Status updated:", updated.status);
-
-          io.to(status.recipient_id).emit("messageStatus", updated);
-
-          console.log("📤 Emitted event: messageStatus");
-          console.log("➡ Room:", status.recipient_id);
-
-          const room = io.sockets.adapter.rooms.get(status.recipient_id);
-
-          console.log(
-            "👥 Active listeners:",
-            room ? room.size : 0
-          );
-        }
-      }
-    }
-
-    console.log("✅ Webhook processed successfully\n");
-
-    res.sendStatus(200);
-
-  } catch (err) {
-
-    console.error("❌ Webhook error:", err);
-
-    res.sendStatus(500);
-  }
+		res.sendStatus(500);
+	}
 }
-
-
-
-
-
-
 
 // export async function handleWebhook(req: Request, res: Response): Promise<void> {
 //   try {
@@ -703,8 +473,8 @@ export async function handleWebhook(req: Request, res: Response) {
 //             id: message.id,
 //           });
 
-//           const messageBody = message.text?.body || 
-//                             message.image?.caption || 
+//           const messageBody = message.text?.body ||
+//                             message.image?.caption ||
 //                             message.video?.caption ||
 //                             message.document?.caption ||
 //                             `[${message.type}]`;
@@ -748,8 +518,8 @@ export async function handleWebhook(req: Request, res: Response) {
 //           });
 
 //           // Update message status
-//           const updateData: any = { 
-//             status: status.status 
+//           const updateData: any = {
+//             status: status.status
 //           };
 
 //           if (status.errors && status.errors.length > 0) {
@@ -785,7 +555,8 @@ export async function getMessages(req: Request, res: Response): Promise<void> {
 			limit?: string;
 			page?: string;
 		};
-
+		
+		console.log('phoneNumber: ', phoneNumber);
 		const limitNum = parseInt(limit);
 		const pageNum = parseInt(page);
 		const skip = (pageNum - 1) * limitNum;
@@ -793,9 +564,9 @@ export async function getMessages(req: Request, res: Response): Promise<void> {
 		let query: any = {};
 
 		if (phoneNumber) {
-			const formattedPhone = formatPhoneNumber(phoneNumber);
+			// const formattedPhone = formatPhoneNumber(phoneNumber);
 			query = {
-				$or: [{ from: formattedPhone }, { to: formattedPhone }],
+				$or: [{ from: phoneNumber }, { to: phoneNumber }],
 			};
 		}
 
@@ -824,37 +595,32 @@ export async function getMessages(req: Request, res: Response): Promise<void> {
  * Get all contacts
  */
 export async function getContacts(req: Request, res: Response): Promise<void> {
-  try {
-    const { search } = req.query; // single search input (name or phone)
+	try {
+		const { search } = req.query; // single search input (name or phone)
 
-    const query: any = {};
+		const query: any = {};
 
-    if (search) {
-      query.$or = [
-        { name: { $regex: search as string, $options: "i" }, }, // search by name
-        { phoneNumber: { $regex: search as string, $options: "i" } }, // search by phone
-      ];
-    }
+		if (search) {
+			query.$or = [
+				{ name: { $regex: search as string, $options: "i" } }, // search by name
+				{ phoneNumber: { $regex: search as string, $options: "i" } }, // search by phone
+			];
+		}
 
-	const contacts = await contactsModel
-	  .find(query)
-	  .sort({ lastMessageAt: -1 })
-	  .populate("hubspotId");
+		const contacts = await contactsModel.find(query).sort({ lastMessageAt: -1 }).populate("hubspotId");
 
-    res.json({
-      success: true,
-      data: contacts,
-    });
-
-  } catch (error: any) {
-    console.error("❌ Get Contacts Error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
+		res.json({
+			success: true,
+			data: contacts,
+		});
+	} catch (error: any) {
+		console.error("❌ Get Contacts Error:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message,
+		});
+	}
 }
-
 
 /**
  * Mark contact messages as read

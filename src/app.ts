@@ -15,6 +15,7 @@ import { startReminderCronJob } from "./services/reminder-cron-service";
 import mongoose from "mongoose";
 import { config } from "./config/whatsapp";
 import { initSocket } from "./lib/socket";
+import { syncTemplates } from "./services/whatsapp-service";
 
 // Create __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url); // <-- Define __filename
@@ -59,6 +60,7 @@ app.use(express.static(dir));
 // });
 var uploadsDir = path.join(__dirname, "uploads");
 app.use("/uploads", express.static(uploadsDir));
+// await syncTemplates();
 
 // connectDB();
 

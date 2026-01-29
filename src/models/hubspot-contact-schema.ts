@@ -18,7 +18,7 @@ export interface IHubSpotContact extends Document {
   metadata?: any;
   retryCount: number;
   createdAt: Date;
-  country?: string;
+  region?: string;
   updatedAt: Date;
 }
 
@@ -50,7 +50,7 @@ const hubspotContactSchema = new Schema<IHubSpotContact>(
       required: true,
       index: true,
     },
-    country: {
+    region: {
       type: String,
       trim: true,
     },
