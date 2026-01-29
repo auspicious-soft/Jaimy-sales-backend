@@ -18,7 +18,7 @@ export async function sendSms(
   name?: string, phoneNumber?: string
 ) {
   return await twilioClient.messages.create({
-    from: process.env.TWILIO_PHONE_NUMBER!,
+    from: process.env.TWILIO_PHONE_NUMBERS!,
     to,
     body:whatsappFailureSmsTemplate(name, phoneNumber),
   });
